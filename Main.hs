@@ -21,9 +21,6 @@ segmentDim = 15
 cherryRadius = 7.5
 (width, height) = (600, 600)
 
-foreign import javascript unsafe "$r = performance.now();"
-  now :: IO Double
-
 -- | Utility for periodic tick subscriptions
 every :: Int -> (Double -> action) -> Sub action model
 every n f _ sink = void . forkIO . forever $ do
