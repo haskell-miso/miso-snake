@@ -23,7 +23,7 @@ cherryRadius = 7.5
 
 -- | Utility for periodic tick subscriptions
 every :: Int -> (Double -> action) -> Sub action
-every n f _ sink = void . forkIO . forever $ do
+every n f sink = void . forkIO . forever $ do
   threadDelay n
   sink =<< f <$> now
 
