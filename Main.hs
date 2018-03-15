@@ -22,7 +22,7 @@ cherryRadius = 7.5
 (width, height) = (600, 600)
 
 -- | Utility for periodic tick subscriptions
-every :: Int -> (Double -> action) -> Sub action model
+every :: Int -> (Double -> action) -> Sub action
 every n f _ sink = void . forkIO . forever $ do
   threadDelay n
   sink =<< f <$> now
