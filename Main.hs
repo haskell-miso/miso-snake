@@ -28,18 +28,12 @@ every n f sink = void . forkIO . forever $ do
   sink =<< f <$> now
 
 main :: IO ()
-main = startApp App {..}
-  where
-    initialAction = NoOp
-    mountPoint = Nothing
-    model  = NotStarted
-    update = updateModel
-    view   = viewModel
-    events = defaultEvents
-    subs   = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
-             , keyboardSub KeyboardPress
-             , every 50000 Tick -- 50 ms
-             ]
+main = startApp (defaultApp NotStarted updateModel viewModel)
+  { subs = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
+           , keyboardSub KeyboardPress
+           , every 50000 Tick -- 50 ms
+           ]
+  }
 
 -- | Model
 data Direction
