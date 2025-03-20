@@ -1,7 +1,7 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE MultiWayIf        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
-
 module Main where
 
 import           Control.Concurrent
@@ -16,6 +16,10 @@ import           Miso.Svg           hiding (height_, id_, style_, width_)
 
 -- | miso-snake: heavily inspired by elm-snake
 -- (https://github.com/theburningmonk/elm-snake)
+
+#ifdef WASM
+foreign export javascript "hs_start" main :: IO ()
+#endif
 
 segmentDim = 15
 cherryRadius = 7.5
