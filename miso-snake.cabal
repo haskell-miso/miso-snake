@@ -12,5 +12,5 @@ executable app
     cpp-options:
       -DWASM
   main-is:             Main.hs
-  build-depends:       base, containers, miso, random
+  build-depends:       base, containers, miso, mtl, random
   default-language:    Haskell2010

@@ -1,18 +1,21 @@
 {-# LANGUAGE CPP               #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE MultiWayIf        #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad.IO.Class (liftIO)
 import           Control.Concurrent
 import           Control.Monad
-import qualified Data.Map           as M
-import qualified Data.Set           as Set
+import           Control.Monad.State
+import qualified Data.Map as M
+import qualified Data.Set as Set
 import           System.Random
 
 import           Miso
-import           Miso.String        (MisoString, ms)
-import           Miso.Svg           hiding (height_, id_, style_, width_)
+import           Miso.String (MisoString, ms)
+import           Miso.Svg hiding (height_, id_, style_, width_)
 
 -- | miso-snake: heavily inspired by elm-snake
 -- (https://github.com/theburningmonk/elm-snake)
@@ -27,12 +30,12 @@ cherryRadius = 7.5
 
 -- | Utility for periodic tick subscriptions
 every :: Int -> (Double -> action) -> Sub action
-every n f sink = void . forkIO . forever $ do
+every n f sink = liftIO . void . forkIO . forever $ do
   threadDelay n
   sink =<< f <$> now
 
 main :: IO ()
-main = startApp (defaultApp NotStarted updateModel viewModel)
+main = run $ startApp (defaultApp NotStarted start viewModel)
   { subs = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
            , keyboardSub KeyboardPress
            , every 50000 Tick -- 50 ms
@@ -140,40 +143,48 @@ viewModel Started{..} =
                                    ] []
 
 -- | Updates model, optionally introduces side effects
-updateModel :: Msg -> Model -> Effect Msg Model
-updateModel msg NotStarted =
-  case msg of
-       KeyboardPress keys | Set.member 32 keys -> noEff $ Started initSnake Nothing 0
-       _                                       -> noEff NotStarted
-updateModel (ArrowPress arrs) model@Started{..} =
-  let newDir = getNewDirection arrs (direction snake)
-      newSnake = snake { direction = newDir } in
+start :: Msg -> Effect Model Msg ()
+start msg = do
+  get >>= \case
+    Started{} ->
+      updateModel msg
+    NotStarted ->
+      case msg of
+        KeyboardPress keys | Set.member 32 keys -> noEff (Started initSnake Nothing 0)
+        _ -> noEff NotStarted
+updateModel (ArrowPress arrs) = do
+  model <- get
+  let newDir = getNewDirection arrs $ direction (snake model)
+      newSnake = (snake model) { direction = newDir }
   noEff $ model { snake = newSnake }
-updateModel (Spawn chance (randX, randY)) model@Started{..}
-  | chance <= 0.1 =
-     let newCherry = spawnCherry randX randY in
-     noEff model { cherry = newCherry }
-  | otherwise =
-     noEff model
-updateModel (Tick _) model@Started{..} =
-  let newHead = getNewSegment (shead snake) (direction snake)
-      ateCherry = maybe False (isOverlap newHead) cherry
-      newTail =
+updateModel (Spawn chance (randX, randY)) = do
+  model <- get
+  case chance of
+    _ | chance <= 0.1 ->
+          put model { cherry = spawnCherry randX randY }
+      | otherwise ->
+          put model
+updateModel (Tick _) = do
+  model@Started{..} <- get
+  let
+    newHead = getNewSegment (shead snake) (direction snake)
+    ateCherry = maybe False (isOverlap newHead) cherry
+    newTail =
         if ateCherry then shead snake : stail snake
                      else shead snake : init (stail snake) -- partial!
-      newSnake = snake { shead = newHead, stail = newTail }
-      (newCherry, newScore) =
+    newSnake = snake { shead = newHead, stail = newTail }
+    (newCherry, newScore) =
         if ateCherry then (Nothing, score + 1)
                      else (cherry, score)
-      newModel = model { snake = newSnake, cherry = newCherry, score = newScore }
-      gameOver = isGameOver newHead newTail
-      in
+    newModel = model { snake = newSnake, cherry = newCherry, score = newScore }
+    gameOver = isGameOver newHead newTail
+
   if | gameOver          -> noEff NotStarted
      | cherry == Nothing -> newModel <# do
-                                        [chance, xPos, yPos] <- replicateM 3 $ randomRIO (0, 1)
-                                        return $ Spawn chance (xPos, yPos)
+         [chance, xPos, yPos] <- liftIO $ replicateM 3 $ randomRIO (0, 1)
+         return $ Spawn chance (xPos, yPos)
      | otherwise         -> noEff newModel
-updateModel _ model = noEff model
+updateModel _ = pure ()
 
 getNewDirection :: Arrows -> Direction -> Direction
 getNewDirection (Arrows arrX arrY) dir
