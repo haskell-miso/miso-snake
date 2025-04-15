@@ -143,7 +143,7 @@ viewModel Started{..} =
                                    ] []
 
 -- | Updates model, optionally introduces side effects
-start :: Msg -> Effect Model Msg ()
+start :: Msg -> Effect Model Msg
 start msg = do
   get >>= \case
     Started{} ->
