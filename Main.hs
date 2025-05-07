@@ -16,6 +16,7 @@ import           System.Random
 import           Miso
 import           Miso.String (MisoString, ms)
 import           Miso.Svg hiding (height_, id_, style_, width_)
+import qualified Miso.Style as CSS
 
 -- | miso-snake: heavily inspired by elm-snake
 -- (https://github.com/theburningmonk/elm-snake)
@@ -59,8 +60,7 @@ data Snake = Snake
   { shead :: !Position
   , stail :: ![Position]
   , direction :: !Direction
-  }
-  deriving (Show, Eq)
+  } deriving (Show, Eq)
 
 type Cherry = Maybe Position
 
@@ -101,10 +101,10 @@ rootBase content = div_ [] [ svg_ [ height_ $ px height
 
 
 textStyle :: Attribute a
-textStyle = style_ $ M.fromList [ ("fill", "green")
-                                , ("stroke", "green")
-                                , ("text-anchor", "middle")
-                                ]
+textStyle = CSS.style_ [ ("fill", "green")
+                       , ("stroke", "green")
+                       , ("text-anchor", "middle")
+                       ]
 
 px :: Show a => a -> MisoString
 px e = ms $ show e ++ "px"
@@ -126,20 +126,20 @@ viewModel Started{..} =
                                 , cy_ $ px y
                                 , rx_ $ px cherryRadius
                                 , ry_ $ px cherryRadius
-                                , style_ $ M.fromList [ ("fill", "red")
-                                                      , ("stroke", "black")
-                                                      , ("stroke-width", "2")
-                                                      ]
+                                , CSS.style_ [ ("fill", "red")
+                                             , ("stroke", "black")
+                                             , ("stroke-width", "2")
+                                             ]
                                 ] []
     snakeSvg Snake {..} = snakeLimb "white" shead : map (snakeLimb "yellow") stail
     snakeLimb color (x, y) = rect_ [ width_ $ px segmentDim
                                    , height_ $ px segmentDim
                                    , x_ $ px x
                                    , y_ $ px y
-                                   , style_ $ M.fromList [ ("fill", color)
-                                                         , ("stroke", "black")
-                                                         , ("stroke-width", "2")
-                                                         ]
+                                   , CSS.style_ [ ("fill", color)
+                                                , ("stroke", "black")
+                                                , ("stroke-width", "2")
+                                                ]
                                    ] []
 
 -- | Updates model, optionally introduces side effects
