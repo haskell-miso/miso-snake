@@ -36,7 +36,7 @@ every n f sink = liftIO . void . forkIO . forever $ do
   sink =<< f <$> now
 
 main :: IO ()
-main = run $ startApp (defaultApp NotStarted startSnake viewModel)
+main = run $ startComponent (defaultComponent NotStarted startSnake viewModel)
   { subs = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
            , keyboardSub KeyboardPress
            , every 50000 Tick -- 50 ms
