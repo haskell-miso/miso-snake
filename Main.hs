@@ -2,16 +2,13 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE MultiWayIf        #-}
-{-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Control.Monad.IO.Class (liftIO)
-import           Control.Concurrent
 import           Control.Monad
-import           Control.Monad.State
-import qualified Data.Map as M
 import qualified Data.Set as Set
 import           System.Random
 
@@ -20,6 +17,8 @@ import           Miso.String (MisoString, ms)
 import           Miso.Svg hiding (height_, id_, style_, width_)
 import qualified Miso.Style as CSS
 
+import           Language.Javascript.JSaddle (jsg, (#))
+
 -- | miso-snake: heavily inspired by elm-snake
 -- (https://github.com/theburningmonk/elm-snake)
 
@@ -27,21 +26,24 @@ import qualified Miso.Style as CSS
 foreign export javascript "hs_start" main :: IO ()
 #endif
 
+segmentDim, cherryRadius, width, height :: Double
 segmentDim = 15
 cherryRadius = 7.5
 (width, height) = (600, 600)
 
 -- | Utility for periodic tick subscriptions
 every :: Int -> (Double -> action) -> Sub action
-every n f sink = liftIO . void . forkIO . forever $ do
-  threadDelay n
-  sink =<< f <$> now
+every n f sink = do
+  win <- jsg ("window" :: MisoString)
+  void $ win # ("setInterval" :: MisoString) $ (asyncCallback handle, n)
+  where
+    handle = sink . f =<< now
 
 main :: IO ()
 main = run $ startComponent (component NotStarted startSnake viewModel)
   { subs = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
            , keyboardSub KeyboardPress
-           , every 50000 Tick -- 50 ms
+           , every 50 Tick -- 50 ms
            ]
   }
 
@@ -152,13 +154,15 @@ startSnake msg = do
       updateModel msg
     NotStarted ->
       case msg of
-        KeyboardPress keys | Set.member 32 keys -> noEff (Started initSnake Nothing 0)
-        _ -> noEff NotStarted
+        KeyboardPress keys | Set.member 32 keys -> put (Started initSnake Nothing 0)
+        _ -> put NotStarted
+
+updateModel :: Msg -> Effect Model Msg
 updateModel (ArrowPress arrs) = do
   model <- get
   let newDir = getNewDirection arrs $ direction (snake model)
       newSnake = (snake model) { direction = newDir }
-  noEff $ model { snake = newSnake }
+  put $ model { snake = newSnake }
 updateModel (Spawn chance (randX, randY)) = do
   model <- get
   case chance of
@@ -167,8 +171,9 @@ updateModel (Spawn chance (randX, randY)) = do
       | otherwise ->
           put model
 updateModel (Tick _) = do
-  model@Started{..} <- get
+  model <- get
   let
+    Started {..} = model
     newHead = getNewSegment (shead snake) (direction snake)
     ateCherry = maybe False (isOverlap newHead) cherry
     newTail =
@@ -180,12 +185,11 @@ updateModel (Tick _) = do
                      else (cherry, score)
     newModel = model { snake = newSnake, cherry = newCherry, score = newScore }
     gameOver = isGameOver newHead newTail
-
-  if | gameOver          -> noEff NotStarted
+  if | gameOver          -> put NotStarted
      | cherry == Nothing -> newModel <# do
          [chance, xPos, yPos] <- liftIO $ replicateM 3 $ randomRIO (0, 1)
          return $ Spawn chance (xPos, yPos)
-     | otherwise         -> noEff newModel
+     | otherwise         -> put newModel
 updateModel _ = pure ()
 
 getNewDirection :: Arrows -> Direction -> Direction
