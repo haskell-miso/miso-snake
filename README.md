@@ -1,4 +1,4 @@
-miso-snake
+:ramen: :snake: miso-snake
 ==========
 
 Snake, using [miso](https://github.com/haskell-miso/miso).
