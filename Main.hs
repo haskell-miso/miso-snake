@@ -12,7 +12,7 @@ import           Control.Monad
 import qualified Data.Set as Set
 import           System.Random
 
-import           Miso
+import           Miso hiding (text_)
 import           Miso.String (MisoString, ms)
 import           Miso.Svg hiding (height_, id_, style_, width_)
 import qualified Miso.Style as CSS
@@ -40,7 +40,7 @@ every n f sink = do
     handle = sink . f =<< now
 
 main :: IO ()
-main = run $ startComponent (component NotStarted startSnake viewModel)
+main = run $ startApp (component NotStarted startSnake viewModel)
   { subs = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
            , keyboardSub KeyboardPress
            , every 50 Tick -- 50 ms
@@ -95,7 +95,7 @@ initSnake = Snake { shead = h, stail = t, direction = R }
     t = fmap (\n -> pos (-n*segmentDim) 0) [1..8]
 
 -- | Render a model
-rootBase :: [View a] -> View a
+rootBase :: [View m a] -> View m a
 rootBase content = div_ [] [ svg_ [ height_ $ px height
                                   , width_ $ px width
                                   ] [ g_  [] (bg : content) ]
@@ -113,7 +113,7 @@ textStyle = CSS.style_ [ ("fill", "green")
 px :: Show a => a -> MisoString
 px e = ms $ show e ++ "px"
 
-viewModel :: Model -> View Msg
+viewModel :: Model -> View Model Msg
 viewModel NotStarted = rootBase [ text_ [ x_ $ px (width / 2)
                                         , y_ $ px (height / 2)
                                         , textStyle
@@ -147,7 +147,7 @@ viewModel Started{..} =
                                    ] []
 
 -- | Updates model, optionally introduces side effects
-startSnake :: Msg -> Effect Model Msg
+startSnake :: Msg -> Transition Model Msg
 startSnake msg = do
   get >>= \case
     Started{} ->
@@ -157,7 +157,7 @@ startSnake msg = do
         KeyboardPress keys | Set.member 32 keys -> put (Started initSnake Nothing 0)
         _ -> put NotStarted
 
-updateModel :: Msg -> Effect Model Msg
+updateModel :: Msg -> Transition Model Msg
 updateModel (ArrowPress arrs) = do
   model <- get
   let newDir = getNewDirection arrs $ direction (snake model)
