@@ -7,17 +7,20 @@
 
 module Main where
 
-import Control.Monad.IO.Class (liftIO)
 import           Control.Monad
-import qualified Data.Set as Set
+import           Control.Monad.IO.Class (liftIO)
+import qualified Data.IntSet as IntSet
+import           Data.IntSet (IntSet)
 import           System.Random
 
 import           Miso hiding (text_)
+import           Miso.Html
+import           Miso.Html.Property
+import           Miso.Svg
+import           Miso.Svg.Property
 import           Miso.String (MisoString, ms)
 import           Miso.Svg hiding (height_, id_, style_, width_)
-import qualified Miso.Style as CSS
-
-import           Language.Javascript.JSaddle (jsg, (#))
+import qualified Miso.CSS as CSS
 
 -- | miso-snake: heavily inspired by elm-snake
 -- (https://github.com/theburningmonk/elm-snake)
@@ -83,7 +86,7 @@ data Model
 data Msg
   = Tick !Double
   | ArrowPress !Arrows
-  | KeyboardPress !(Set.Set Int)
+  | KeyboardPress !IntSet
   | Spawn !Double !Position
   | NoOp
 
@@ -101,7 +104,7 @@ rootBase content = div_ [] [ svg_ [ height_ $ px height
                                   ] [ g_  [] (bg : content) ]
                            ]
   where
-    bg = rect_ [ width_ (px width), height_ (px height) ] []
+    bg = rect_ [ width_ (px width), height_ (px height) ]
 
 
 textStyle :: Attribute a
@@ -126,15 +129,17 @@ viewModel Started{..} =
                      , y_ $ px (height - 10)
                      , textStyle
                      ] [ text $ ms $ show score ]
-    cherrySvg (x, y) = ellipse_ [ cx_ $ px x
-                                , cy_ $ px y
-                                , rx_ $ px cherryRadius
-                                , ry_ $ px cherryRadius
-                                , CSS.style_ [ ("fill", "red")
-                                             , ("stroke", "black")
-                                             , ("stroke-width", "2")
-                                             ]
-                                ] []
+    cherrySvg (x, y) =
+      ellipse_ [ cx_ $ px x
+               , cy_ $ px y
+               , rx_ $ px cherryRadius
+               , ry_ $ px cherryRadius
+               , CSS.style_
+                 [ CSS.fill "red"
+                 , CSS.stroke "black"
+                 , CSS.strokeWidth "2"
+                 ]
+               ]
     snakeSvg Snake {..} = snakeLimb "white" shead : map (snakeLimb "yellow") stail
     snakeLimb color (x, y) = rect_ [ width_ $ px segmentDim
                                    , height_ $ px segmentDim
@@ -144,7 +149,7 @@ viewModel Started{..} =
                                                 , ("stroke", "black")
                                                 , ("stroke-width", "2")
                                                 ]
-                                   ] []
+                                   ]
 
 -- | Updates model, optionally introduces side effects
 startSnake :: Msg -> Transition Model Msg
@@ -154,7 +159,7 @@ startSnake msg = do
       updateModel msg
     NotStarted ->
       case msg of
-        KeyboardPress keys | Set.member 32 keys -> put (Started initSnake Nothing 0)
+        KeyboardPress keys | IntSet.member 32 keys -> put (Started initSnake Nothing 0)
         _ -> put NotStarted
 
 updateModel :: Msg -> Transition Model Msg
