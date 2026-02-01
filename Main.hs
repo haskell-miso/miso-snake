@@ -43,7 +43,7 @@ every n f sink = do
     handle = sink . f =<< now
 
 main :: IO ()
-main = run $ startApp defaultEvents (component NotStarted startSnake viewModel)
+main = startApp defaultEvents (component NotStarted startSnake viewModel)
   { subs = [ directionSub ([38,87],[40,83],[37,65],[39,68]) ArrowPress -- arrows + WASD
            , keyboardSub KeyboardPress
            , every 50 Tick -- 50 ms
