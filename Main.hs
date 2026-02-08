@@ -152,7 +152,7 @@ viewModel Started{..} =
                                    ]
 
 -- | Updates model, optionally introduces side effects
-startSnake :: Msg -> Transition Model Msg
+startSnake :: Msg -> Effect parent Model Msg
 startSnake msg = do
   get >>= \case
     Started{} ->
@@ -162,7 +162,7 @@ startSnake msg = do
         KeyboardPress keys | IntSet.member 32 keys -> put (Started initSnake Nothing 0)
         _ -> put NotStarted
 
-updateModel :: Msg -> Transition Model Msg
+updateModel :: Msg -> Effect parent Model Msg
 updateModel (ArrowPress arrs) = do
   model <- get
   let newDir = getNewDirection arrs $ direction (snake model)
